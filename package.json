@@ -1,0 +1,48 @@
+{
+    "name": "flashkart-backend",
+    "version": "1.0.0",
+    "description": "High-concurrency flash-sale platform backend",
+    "main": "dist/server.js",
+    "scripts": {
+        "build": "tsc",
+        "dev": "ts-node -r dotenv/config src/server.ts",
+        "start": "node dist/server.js",
+        "typeorm": "ts-node -r dotenv/config ./node_modules/typeorm/cli.js",
+        "migration:generate": "ts-node -r dotenv/config ./node_modules/typeorm/cli.js migration:generate -d src/config/database.ts",
+        "migration:run": "ts-node -r dotenv/config ./node_modules/typeorm/cli.js migration:run -d src/config/database.ts",
+        "migration:revert": "ts-node -r dotenv/config ./node_modules/typeorm/cli.js migration:revert -d src/config/database.ts",
+        "seed": "ts-node -r dotenv/config src/seeds/seed.ts",
+        "test:concurrency": "ts-node -r dotenv/config src/tests/concurrency.test.ts",
+        "test:checkout": "ts-node -r dotenv/config src/tests/checkout.test.ts"
+    },
+    "keywords": [
+        "flash-sale",
+        "ecommerce",
+        "redis",
+        "postgresql",
+        "typeorm"
+    ],
+    "author": "FlashKart",
+    "license": "MIT",
+    "dependencies": {
+        "express": "^4.18.2",
+        "typeorm": "^0.3.16",
+        "pg": "^8.10.0",
+        "redis": "^4.6.10",
+        "class-validator": "^0.14.0",
+        "class-transformer": "^0.5.1",
+        "dotenv": "^16.3.1",
+        "uuid": "^9.0.0",
+        "helmet": "^7.0.0",
+        "cors": "^2.8.5",
+        "winston": "^3.10.0"
+    },
+    "devDependencies": {
+        "@types/express": "^4.17.17",
+        "@types/node": "^20.5.0",
+        "@types/uuid": "^9.0.2",
+        "@types/cors": "^2.8.14",
+        "typescript": "^5.1.6",
+        "ts-node": "^10.9.1"
+    }
+}
