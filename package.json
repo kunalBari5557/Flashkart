@@ -5,7 +5,9 @@
     "main": "dist/server.js",
     "scripts": {
         "build": "tsc",
+        "postbuild": "node -e \"const fs=require('fs'); fs.cpSync('src/redis', 'dist/redis', {recursive:true});\"",
         "dev": "ts-node -r dotenv/config src/server.ts",
+        "prestart": "npm run build",
         "start": "node dist/server.js",
         "typeorm": "ts-node -r dotenv/config ./node_modules/typeorm/cli.js",
         "migration:generate": "ts-node -r dotenv/config ./node_modules/typeorm/cli.js migration:generate -d src/config/database.ts",

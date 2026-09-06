@@ -1,13 +1,10 @@
+import "dotenv/config";
 import "reflect-metadata";
-import dotenv from "dotenv";
 import { createApp } from "./app";
 import { initializeDatabase } from "./config/database";
 import { initializeRedis } from "./config/redis";
 import { getReservationExpiryWorker } from "./workers/reservation-expiry.worker";
 import { config, validateConfig } from "./config/env";
-
-// Load environment variables
-dotenv.config();
 
 const startServer = async () => {
     try {
