@@ -35,14 +35,30 @@ export class ProductService {
     }
 
     /**
-     * Gets all active products
+     * Gets all active products with live Redis stock
      */
     async getAllProducts(): Promise<Product[]> {
         const productRepository = dataSource.getRepository(Product);
-        return productRepository.find({
+        const products = await productRepository.find({
             where: { status: ProductStatus.ACTIVE },
             order: { createdAt: "DESC" },
         });
+
+        // Fetch live stock from Redis for real-time accuracy during flash sales
+        try {
+            const { StockService } = await import("./stock.service");
+            const stockService = new StockService();
+            for (const product of products) {
+                const redisStock = await stockService.getStock(product.id);
+                if (redisStock !== null && redisStock !== undefined) {
+                    product.stock = redisStock;
+                }
+            }
+        } catch (error) {
+            console.error("Error fetching live Redis stock for products:", error);
+        }
+
+        return products;
     }
 
     /**

@@ -52,6 +52,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   const items = cart?.items || [];
   const hasItems = items.length > 0;
+  const calculatedTotal = (cart?.totalAmount && cart.totalAmount > 0)
+    ? cart.totalAmount
+    : items.reduce((sum, item) => {
+        const price = typeof item.product?.price === "string"
+          ? parseFloat(item.product.price)
+          : (item.product?.price || 0);
+        return sum + (price * item.quantity);
+      }, 0);
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
@@ -109,7 +117,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               </div>
             ) : (
               items.map((item: CartItem) => {
-                const remainingSecs = getTimeRemainingSeconds(item.expiresAt);
+                const expiryDate = item.reservationExpiresAt || item.expiresAt;
+                const remainingSecs = expiryDate ? getTimeRemainingSeconds(expiryDate) : 300;
                 const { text: countdownText, isUrgent, progressPct } = formatCountdown(remainingSecs);
                 const isExpired = remainingSecs <= 0;
 
@@ -195,20 +204,20 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           {/* Footer Checkout Summary */}
           {hasItems && (
             <div className="p-6 border-t border-slate-800 bg-slate-900/90 space-y-4">
-              <div className="space-y-2 text-xs">
-                <div className="flex items-center justify-between text-slate-400">
-                  <span>Items Subtotal</span>
-                  <span className="font-mono text-slate-200">{formatCurrency(cart?.totalAmount || 0)}</span>
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span>Items Subtotal</span>
+                    <span className="font-mono text-slate-200">{formatCurrency(calculatedTotal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span>Flash Shipping</span>
+                    <span className="text-emerald-400 font-bold uppercase">FREE</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-sm font-bold text-white">
+                    <span>Total Lock Price</span>
+                    <span className="text-lg font-mono text-purple-400">{formatCurrency(calculatedTotal)}</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-slate-400">
-                  <span>Flash Shipping</span>
-                  <span className="text-emerald-400 font-bold uppercase">FREE</span>
-                </div>
-                <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-sm font-bold text-white">
-                  <span>Total Lock Price</span>
-                  <span className="text-lg font-mono text-purple-400">{formatCurrency(cart?.totalAmount || 0)}</span>
-                </div>
-              </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <Button

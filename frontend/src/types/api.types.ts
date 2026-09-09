@@ -17,7 +17,8 @@ export interface CartItem {
   product: Product;
   quantity: number;
   reservationId: string;
-  expiresAt: string;
+  reservationExpiresAt?: string;
+  expiresAt?: string;
   createdAt?: string;
 }
 

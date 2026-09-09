@@ -9,10 +9,19 @@ export class CartService {
      */
     async getActiveCart(userId: string): Promise<Cart | null> {
         const cartRepository = dataSource.getRepository(Cart);
-        return cartRepository.findOne({
+        const cart = await cartRepository.findOne({
             where: { userId, status: CartStatus.ACTIVE },
             relations: ["items", "items.product"],
         });
+
+        if (cart) {
+            (cart as any).totalAmount = (cart.items || []).reduce((total, item) => {
+                const price = parseFloat(item.product?.price?.toString() || "0");
+                return total + price * item.quantity;
+            }, 0);
+        }
+
+        return cart;
     }
 
     /**
