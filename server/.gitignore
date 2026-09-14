@@ -5,7 +5,8 @@
 
 # Dependencies
 node_modules/
-package-lock.json
+# Keep the lockfile committed so npm ci works in CI and Docker builds.
+!package-lock.json
 yarn.lock
 
 # Build outputs
