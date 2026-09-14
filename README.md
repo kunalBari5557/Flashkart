@@ -50,6 +50,33 @@ cd server
 docker compose up -d postgres redis
 ```
 
+## Render deployment setup
+
+For Render, set the root directory to `server` and use:
+
+```bash
+npm install
+npm run build
+```
+
+Start command:
+
+```bash
+npm run start
+```
+
+Environment variables to add in Render:
+
+```env
+DATABASE_URL=postgresql://postgres:yourpassword@yourhost:5432/flashkart
+REDIS_URL=redis://your-redis-host:6379
+JWT_SECRET=your-secret-key
+NODE_ENV=production
+PORT=10000
+```
+
+This project expects the backend runtime values from the server environment configuration and the app health endpoint at `/health`.
+
 ## CI/CD architecture
 
 GitHub Actions is the single source of truth for deployment.
