@@ -1,20 +1,23 @@
-name: Production Deploy
+name: Server Deploy
 
 on:
   push:
     branches:
       - main
+    paths:
+      - 'server/**'
+      - '.github/workflows/server-deploy.yml'
 
 permissions:
   contents: read
 
 concurrency:
-  group: production-deployment
+  group: server-production-deploy
   cancel-in-progress: false
 
 jobs:
-  ci-and-deploy:
-    name: CI + production deployment
+  deploy-server:
+    name: Deploy backend server
     runs-on: ubuntu-latest
     environment: production
 
@@ -22,37 +25,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js for client
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: client/package-lock.json
-
-      - name: Install client dependencies
-        working-directory: ./client
-        run: npm ci
-
-      - name: Lint client
-        working-directory: ./client
-        run: npm run lint
-
-      - name: Build client
-        working-directory: ./client
-        run: npm run build
-
-      - name: Setup Node.js for server
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: server/package-lock.json
 
-      - name: Install server dependencies
+      - name: Install backend dependencies
         working-directory: ./server
         run: npm ci
 
-      - name: Build server
+      - name: Build backend
         working-directory: ./server
         run: npm run build
 
@@ -63,73 +47,50 @@ jobs:
         run: |
           set -e
           if [ -z "$DATABASE_URL" ]; then
-            echo "DATABASE_URL is required for production migrations."
+            echo "DATABASE_URL is required."
             exit 1
           fi
           npm run migration:run
 
-      - name: Trigger Render backend deployment
+      - name: Restart backend service
         env:
-          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
           set -e
-          test -n "$RENDER_DEPLOY_HOOK"
-          curl --fail --silent --show-error -X POST "$RENDER_DEPLOY_HOOK"
-
-      - name: Wait for backend health check
-        env:
-          PRODUCTION_API_URL: ${{ secrets.PRODUCTION_API_URL }}
-        run: |
-          set -e
-          if [ -z "$PRODUCTION_API_URL" ]; then
-            echo "PRODUCTION_API_URL secret is required."
+          if [ -z "$SERVER_HOST" ] || [ -z "$SERVER_USER" ] || [ -z "$SSH_PRIVATE_KEY" ]; then
+            echo "Missing SSH deployment secrets."
             exit 1
           fi
 
-          echo "Waiting for backend health check at $PRODUCTION_API_URL/health"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          ssh -i ~/.ssh/id_ed25519 "$SERVER_USER@$SERVER_HOST" "cd /path/to/your/project/server && git pull origin main && npm ci && npm run build && pm2 restart flashkart-server || pm2 start npm --name flashkart-server -- run start"
+
+      - name: Verify backend health
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: |
+          set -e
+          if [ -z "$BACKEND_URL" ]; then
+            echo "BACKEND_URL secret is required."
+            exit 1
+          fi
+
           for attempt in $(seq 1 30); do
-            if curl --fail --silent "$PRODUCTION_API_URL/health" > /tmp/backend-health.json; then
+            if curl --fail --silent "$BACKEND_URL/health" > /tmp/backend-health.json; then
               echo "Backend is healthy."
               cat /tmp/backend-health.json
               exit 0
             fi
-            echo "Backend not ready yet (attempt $attempt/30). Retrying in 10 seconds..."
+            echo "Health check failed, retrying in 10 seconds..."
             sleep 10
           done
 
-          echo "::error::Backend health check failed past retry timeout."
+          echo "Backend health check failed after retries."
           exit 1
-
-      - name: Deploy frontend to Vercel
-        working-directory: ./client
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          set -e
-          test -n "$VERCEL_TOKEN"
-          test -n "$VERCEL_ORG_ID"
-          test -n "$VERCEL_PROJECT_ID"
-
-          npm ci
-          npm install -g vercel@latest
-          vercel pull --yes --environment=production --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID"
-          vercel build --prod --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID"
-          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID" --project="$VERCEL_PROJECT_ID"
-
-      - name: Verify frontend and backend availability
-        env:
-          PRODUCTION_API_URL: ${{ secrets.PRODUCTION_API_URL }}
-          PRODUCTION_FRONTEND_URL: ${{ secrets.PRODUCTION_FRONTEND_URL }}
-        run: |
-          set -e
-          if [ -z "$PRODUCTION_API_URL" ] || [ -z "$PRODUCTION_FRONTEND_URL" ]; then
-            echo "PRODUCTION_API_URL and PRODUCTION_FRONTEND_URL secrets are required."
-            exit 1
-          fi
-
-          curl --fail --silent "$PRODUCTION_API_URL/health"
-          curl --fail --silent "$PRODUCTION_FRONTEND_URL"
-
-          echo "Production deployment verification succeeded."
