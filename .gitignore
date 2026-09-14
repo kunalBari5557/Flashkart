@@ -1,0 +1,13 @@
+# Root environment files
+.env
+.env.*
+!.env.example
+
+# Local tool files
+.DS_Store
+
+# Node / package manager artifacts
+node_modules/
+
+# Logs
+*.log
